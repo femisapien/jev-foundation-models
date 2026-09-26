@@ -711,11 +711,12 @@ struct ConfigurationTests {
     func testKeychainServicePersistenceAcrossFreshInstances() throws {
         let suiteName = "test.keychain.suite.\(UUID().uuidString)"
         let testDefaults = UserDefaults(suiteName: suiteName)!
+        let testServiceName = "test.service.\(UUID().uuidString)"
         defer {
             testDefaults.removePersistentDomain(forName: suiteName)
+            KeychainService.resetFallbackStore(for: testServiceName)
         }
 
-        let testServiceName = "test.service.\(UUID().uuidString)"
         let service1 = KeychainService(serviceName: testServiceName, defaults: testDefaults)
         let testApiKey = "ts_live_secret_key_999"
         let testVpcToken = "vpc_token_test_888"
@@ -755,15 +756,16 @@ struct ConfigurationTests {
     func testKeychainServicePurgeAndMigrateLegacyDefaults() throws {
         let suiteName = "test.migration.suite.\(UUID().uuidString)"
         let testDefaults = UserDefaults(suiteName: suiteName)!
+        let testServiceName = "test.migration.service.\(UUID().uuidString)"
         defer {
             testDefaults.removePersistentDomain(forName: suiteName)
+            KeychainService.resetFallbackStore(for: testServiceName)
         }
 
         let legacyKey = "ai.typesafe.secure.storage.legacySecret"
         testDefaults.set("secret_value_123", forKey: legacyKey)
         #expect(testDefaults.string(forKey: legacyKey) == "secret_value_123")
 
-        let testServiceName = "test.migration.service.\(UUID().uuidString)"
         let service = KeychainService(serviceName: testServiceName, defaults: testDefaults)
 
         // Verify legacy key was erased from UserDefaults (SEC-1)

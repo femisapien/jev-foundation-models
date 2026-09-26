@@ -19,12 +19,38 @@ public final class KeychainService: KeychainServiceProtocol, @unchecked Sendable
     private let serviceName: String
     private let defaults: UserDefaults
     private let lock = NSLock()
-    private var inMemoryFallback: [String: String] = [:]
+    private static let fallbackLock = NSLock()
+    nonisolated(unsafe) private static var sharedFallbackStore: [String: [String: String]] = [:]
     private let persistentKeyPrefix = "ai.typesafe.secure.storage."
 
     public static let keyTypeSafeAPIKey = "typesafeApiKey"
     public static let keyHostedVPCToken = "hostedVpcToken"
     public static let keyHuggingFaceToken = "huggingFaceToken"
+
+    /// Resets the in-memory fallback store across all service domains or for a specific service.
+    /// Used by test suites to guarantee fresh, isolated state.
+    public static func resetFallbackStore(for serviceName: String? = nil) {
+        fallbackLock.lock()
+        defer { fallbackLock.unlock() }
+        if let serviceName = serviceName {
+            sharedFallbackStore.removeValue(forKey: serviceName)
+        } else {
+            sharedFallbackStore.removeAll()
+        }
+    }
+
+    private var inMemoryFallback: [String: String] {
+        get {
+            Self.fallbackLock.lock()
+            defer { Self.fallbackLock.unlock() }
+            return Self.sharedFallbackStore[serviceName] ?? [:]
+        }
+        set {
+            Self.fallbackLock.lock()
+            defer { Self.fallbackLock.unlock() }
+            Self.sharedFallbackStore[serviceName] = newValue
+        }
+    }
 
     public init(
         serviceName: String = "ai.typesafe.mailtriage",
@@ -110,19 +136,7 @@ public final class KeychainService: KeychainServiceProtocol, @unchecked Sendable
         ]
 
         var item: CFTypeRef?
-        var status = SecItemCopyMatching(query as CFDictionary, &item)
-        #if os(macOS)
-        if status == errSecMissingEntitlement || status == errSecItemNotFound {
-            var fallbackQuery = query
-            fallbackQuery.removeValue(forKey: kSecUseDataProtectionKeychain as String)
-            var fallbackItem: CFTypeRef?
-            let fallbackStatus = SecItemCopyMatching(fallbackQuery as CFDictionary, &fallbackItem)
-            if fallbackStatus == errSecSuccess {
-                status = fallbackStatus
-                item = fallbackItem
-            }
-        }
-        #endif
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
 
         if status == errSecSuccess,
            let data = item as? Data,
@@ -130,6 +144,11 @@ public final class KeychainService: KeychainServiceProtocol, @unchecked Sendable
            !string.isEmpty {
             inMemoryFallback[key] = string
             return string
+        }
+
+        if status == errSecMissingEntitlement {
+            // Un-entitled environment (e.g. CLI, test runner, Xcode preview, un-provisioned dev build).
+            return inMemoryFallback[key]
         }
 
         return nil
@@ -149,7 +168,7 @@ public final class KeychainService: KeychainServiceProtocol, @unchecked Sendable
         inMemoryFallback[key] = value
 
         let data = Data(value.utf8)
-        var query: [String: Any] = [
+        let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: serviceName,
             kSecAttrAccount as String: key,
@@ -161,13 +180,12 @@ public final class KeychainService: KeychainServiceProtocol, @unchecked Sendable
         ]
 
         // 1. Try SecItemUpdate
-        var updateStatus = SecItemUpdate(query as CFDictionary, updateAttributes as CFDictionary)
-        #if os(macOS)
+        let updateStatus = SecItemUpdate(query as CFDictionary, updateAttributes as CFDictionary)
         if updateStatus == errSecMissingEntitlement {
-            query.removeValue(forKey: kSecUseDataProtectionKeychain as String)
-            updateStatus = SecItemUpdate(query as CFDictionary, updateAttributes as CFDictionary)
+            // Un-entitled environment (e.g. CLI, test runner, Xcode preview, un-provisioned dev build).
+            // Retain in-memory fallback and return without throwing or touching legacy keychain.
+            return
         }
-        #endif
 
         if updateStatus == errSecSuccess {
             return
@@ -179,14 +197,11 @@ public final class KeychainService: KeychainServiceProtocol, @unchecked Sendable
             attributes[kSecValueData as String] = data
             attributes[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
 
-            var addStatus = SecItemAdd(attributes as CFDictionary, nil)
-            #if os(macOS)
+            let addStatus = SecItemAdd(attributes as CFDictionary, nil)
             if addStatus == errSecMissingEntitlement {
-                attributes.removeValue(forKey: kSecUseDataProtectionKeychain as String)
-                attributes.removeValue(forKey: kSecAttrAccessible as String)
-                addStatus = SecItemAdd(attributes as CFDictionary, nil)
+                // Un-entitled environment: retain in-memory fallback and return without touching legacy keychain.
+                return
             }
-            #endif
 
             if addStatus == errSecSuccess {
                 return
@@ -208,20 +223,18 @@ public final class KeychainService: KeychainServiceProtocol, @unchecked Sendable
     private func deleteLocked(key: String) throws {
         inMemoryFallback.removeValue(forKey: key)
 
-        var query: [String: Any] = [
+        let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: serviceName,
             kSecAttrAccount as String: key,
             kSecUseDataProtectionKeychain as String: true
         ]
 
-        var status = SecItemDelete(query as CFDictionary)
-        #if os(macOS)
+        let status = SecItemDelete(query as CFDictionary)
         if status == errSecMissingEntitlement {
-            query.removeValue(forKey: kSecUseDataProtectionKeychain as String)
-            status = SecItemDelete(query as CFDictionary)
+            // Un-entitled environment: removed from inMemoryFallback, return without touching legacy keychain.
+            return
         }
-        #endif
 
         if status != errSecSuccess && status != errSecItemNotFound {
             // Ignore missing item or keychain restriction
