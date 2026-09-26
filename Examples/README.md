@@ -13,6 +13,11 @@ This directory contains reference applications, production examples, and runnabl
 | [**TicketTriageDemo**](TicketTriageDemo/README.md) | CLI Executable | `JevFoundationModels` | ✅ Yes (`TYPESAFE_API_KEY`) | Customer support ticket routing, RFC 9110 HTTP retry resilience (`RetryPolicy`), multi-primitive `@Generable` schema, confidence routing. |
 | [**FileOrganizerDemo**](FileOrganizerDemo/README.md) | CLI Executable | `JevFoundationModels` | Optional (`--demo` offline mode) | Foundation Models **Dynamic Profiles**, runtime session adaptation (`@SessionPropertyEntry`), turn isolation (`.historyTransform`), sensitive file quarantine. |
 | [**DuplicateArticleDemo**](DuplicateArticleDemo/README.md) | CLI Executable | `JevFoundationModels` | Optional (Built-in offline mode) | Two-layer content deduplication (exact fast-path + semantic decision), calibrated Noul undecided band ($0.35\dots0.65$), cooperative Swift 6 task cancellation. |
+| [**TraitSamples/01-OfflineLayaApp**](TraitSamples/01-OfflineLayaApp/README.md) | Standalone Package | `LayaOnDevice` | ❌ No API key | Pure on-device classification via Apple Neural Engine (`traits: ["Laya"]`). Zero network code linked. |
+| [**TraitSamples/02-CloudJevWorker**](TraitSamples/02-CloudJevWorker/README.md) | Standalone Package | `JevFoundationModels` | Optional (Mock fallback) | Ultra-lean ticket triage worker (`traits: ["Jev"]`). Sub-second build, zero ML linkage. |
+| [**TraitSamples/03-PrivateLayaServer**](TraitSamples/03-PrivateLayaServer/README.md) | Standalone Package | `LayaFoundationModels` | Optional (Mock fallback) | Internal VPC cluster scoring (`traits: ["LayaServe"]`). Custom DNS, TLS, and bearer auth. |
+| [**TraitSamples/04-HybridRouter**](TraitSamples/04-HybridRouter/README.md) | Standalone Package | Hybrid (`All`) | Optional (Mock fallback) | Local-first edge execution with dynamic escalation (`traits: ["All"]`). Escalates to cloud Jev if confidence < 0.80. |
+| [**TraitSamples/05-SecureAppCheckApp**](TraitSamples/05-SecureAppCheckApp/README.md) | SwiftUI Mini-App + Cloud Function | `ProxyTransport` (`Jev`) | Optional (Emulator / Mock) | Zero-secret hardware attestation using Firebase App Check (Apple App Attest) and `ProxyTransport`. |
 
 ---
 
@@ -116,3 +121,26 @@ swift run duplicate-article-demo
 ```
 
 For complete documentation, see [Examples/DuplicateArticleDemo/README.md](DuplicateArticleDemo/README.md).
+
+---
+
+### 6. Trait Samples (`Examples/TraitSamples/`)
+
+Five standalone SPM packages demonstrating fine-grained package traits and modularity:
+
+```bash
+# 1. 100% Offline ANE Classification (traits: ["Laya"])
+cd Examples/TraitSamples/01-OfflineLayaApp && swift run
+
+# 2. Cloud-Only Lean Decision Worker (traits: ["Jev"])
+cd Examples/TraitSamples/02-CloudJevWorker && swift run
+
+# 3. Private VPC Server Scoring (traits: ["LayaServe"])
+cd Examples/TraitSamples/03-PrivateLayaServer && swift run
+
+# 4. Local-First Hybrid Confidence Router (traits: ["All"])
+cd Examples/TraitSamples/04-HybridRouter && swift run
+
+# 5. Zero-Secret Hardware-Attested App Check App (ProxyTransport)
+cd Examples/TraitSamples/05-SecureAppCheckApp && swift run SecureAppCheckApp --cli
+```
