@@ -33,17 +33,60 @@ print("=== 01-OfflineLayaApp: 100% Offline Document Classification ===")
 print("Backend: Laya On-Device Core ML Engine (Apple Neural Engine)")
 print("Network code linked: 0 bytes (Air-gapped / Local-only)")
 
-// Initialize tokenizer and on-device Core ML engine
-let tokenizer = ModernBERTTokenizer.defaultTokenizer()
-let engine = LayaCoreMLEngine(tokenizer: tokenizer) { sequence in
-    // Deterministic offline inference simulation matching ANE output
-    if sequence.qtype == 0 {
-        // Choice question: sequence.optionKeys are sorted alphabetically:
-        // ["Invoice", "Legal Contract", "Medical Record", "Tax Form"]
-        // Logit index 2 corresponds to "Medical Record"
-        return [0.2, 0.5, 5.5, 0.1]
+func resolveModelURL() -> URL {
+    let standardURL = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent("Library/Application Support/dev.peterfriese.mailtriageapp/Models/LayaDecisionModel.mlmodelc")
+
+    let selectedURL: URL
+    if let envPath = ProcessInfo.processInfo.environment["LAYA_MODEL_PATH"], !envPath.isEmpty {
+        selectedURL = URL(fileURLWithPath: (envPath as NSString).expandingTildeInPath)
+    } else {
+        selectedURL = standardURL
     }
-    return [1.0, 1.0]
+
+    guard FileManager.default.fileExists(atPath: selectedURL.path) else {
+        print("""
+        ================================================================================
+          ⚠️  CONFIGURATION ERROR: COMPILED CORE ML MODEL NOT FOUND
+        ================================================================================
+          Laya on-device inference requires a compiled Core ML model (.mlmodelc).
+          Looked at:
+            \(selectedURL.path)
+
+          Remediation:
+            export LAYA_MODEL_PATH="/path/to/LayaDecisionModel.mlmodelc"
+            # Or place the compiled model at:
+            # ~/Library/Application Support/dev.peterfriese.mailtriageapp/Models/LayaDecisionModel.mlmodelc
+        ================================================================================
+        """)
+        exit(1)
+    }
+
+    return selectedURL
+}
+
+let modelURL = resolveModelURL()
+let tokenizer = ModernBERTTokenizer.defaultTokenizer()
+let engine: LayaCoreMLEngine
+do {
+    engine = try LayaCoreMLEngine(modelURL: modelURL, tokenizer: tokenizer)
+} catch {
+    print("""
+    ================================================================================
+      ⚠️  CONFIGURATION ERROR: FAILED TO LOAD CORE ML MODEL
+    ================================================================================
+      Failed to load Core ML model at:
+        \(modelURL.path)
+      Underlying error: \(error.localizedDescription)
+
+      Remediation:
+        Verify the model was compiled with:
+        xcrun coremlc compile LayaDecisionModel.mlpackage <output-dir>
+        and set:
+        export LAYA_MODEL_PATH="/path/to/LayaDecisionModel.mlmodelc"
+    ================================================================================
+    """)
+    exit(1)
 }
 
 let model = LayaOnDeviceLanguageModel(engine: engine)

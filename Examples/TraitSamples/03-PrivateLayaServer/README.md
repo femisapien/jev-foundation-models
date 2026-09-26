@@ -33,27 +33,48 @@ targets: [
 
 ## Running the Sample
 
-Execute in simulated mode or against a real internal endpoint:
+This sample requires a reachable **`laya-serve`** daemon or endpoint. In accordance with the project's strict real execution directive, synthetic mock bypasses are not used; if the server cannot be reached, the application terminates immediately with a formatted configuration error banner and remediation instructions.
 
 ```bash
 cd Examples/TraitSamples/03-PrivateLayaServer
 
-# Run in simulated VPC mode:
+# 1. Start laya-serve locally (default: http://127.0.0.1:8000/v1/systemone):
+laya-serve
+
+# 2. Run against the local daemon:
 swift run
 
-# Run against a live internal laya-serve cluster:
-LAYA_SERVE_URL="https://laya.internal-vpc.net:8443/v1/systemone" \
-LAYA_SERVE_TOKEN="Bearer eyJhbGciOi..." \
+# 3. Alternatively, connect to an internal VPC cluster endpoint with optional auth token:
+export LAYA_SERVE_URL="https://laya.internal-vpc.net:8443/v1/systemone"
+export LAYA_SERVE_TOKEN="Bearer eyJhbGciOi..."
 swift run
 ```
 
-### Sample Output
+### Missing Configuration Output
+
+If `laya-serve` is not reachable:
 
 ```text
 === 03-PrivateLayaServer: Self-Hosted Enterprise Laya Cluster ===
-Architecture: Private VPC Kubernetes cluster running `laya-serve`
-Target Endpoint: Custom internal DNS with TLS and Bearer Token Auth
-Mode: Simulated VPC Cluster (Set LAYA_SERVE_URL to connect to a live cluster)
+Architecture: Self-hosted laya-serve cluster
+================================================================================
+  ⚠️  CONFIGURATION ERROR: LAYA-SERVE UNREACHABLE
+================================================================================
+  Error: laya-serve daemon is not reachable at http://127.0.0.1:8000/v1/systemone.
+
+  Remediation:
+    laya-serve
+    # Or specify a reachable server:
+    # export LAYA_SERVE_URL="http://127.0.0.1:8000/v1/systemone"
+================================================================================
+```
+
+### Sample Output (Reachable Server)
+
+```text
+=== 03-PrivateLayaServer: Self-Hosted Enterprise Laya Cluster ===
+Architecture: Self-hosted laya-serve cluster
+Target Endpoint: http://127.0.0.1:8000/v1/systemone
 
 --- Vulnerability Finding ---
 SECURITY SCAN REPORT
@@ -77,5 +98,5 @@ Evaluating rubric severity score via private laya-serve cluster...
     Level 3 [High Risk]: 65.0%
     Level 4 [Critical Vulnerability]: 15.0%
 
-Request dispatched over private VPC transport with internal authentication.
+Request dispatched over private laya-serve transport with authentication.
 ```

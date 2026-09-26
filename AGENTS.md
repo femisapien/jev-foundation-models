@@ -111,6 +111,15 @@ The bridge translates Foundation Models generation schemas to TypeSafe System On
   - Always update the index table in `tech-notes/README.md`.
   - Embed inline code comments in relevant Swift files: `// See tech-notes/NNNN-short-title.md`.
 
+### 7. Example & Demonstration Applications (NOT Unit Tests — Strict Real Execution)
+- Example applications and CLI demonstrators in `Examples/` and `Examples/TraitSamples/` are production-representative showcases, **NOT unit tests**.
+- **NEVER implement mock fallbacks, fake offline simulators, or synthetic response bypasses in example apps.** Mocks in example apps hide configuration errors, provide false confidence, and prevent developers from verifying real model integration.
+- If any required credential (e.g. `TYPESAFE_API_KEY`), configuration (e.g. `LAYA_SERVE_URL`), or background process (e.g. `laya-serve` daemon, Firebase Local Emulator) is missing or unreachable:
+  1. **Issue a clear, formatted warning banner** explaining what is missing.
+  2. **Provide the exact remediation command** (e.g. `export TYPESAFE_API_KEY="..."`, `laya-serve`, or `./run-emulator-and-cli.sh`).
+  3. **Terminate immediately with `exit(1)`**.
+- Mocks are restricted strictly to automated test suites in `Tests/`.
+
 ---
 
 ## 📱 Mobile Platform Engineering Standards (`Examples/MailTriageApp`)

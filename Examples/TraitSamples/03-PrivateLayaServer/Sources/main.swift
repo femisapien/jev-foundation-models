@@ -3,101 +3,58 @@ import FoundationModels
 import SystemOneCore
 import LayaFoundationModels
 
-// MARK: - Mock URLProtocol for Offline / Demo Fallback
+func probeServer(url: URL, timeout: TimeInterval = 2.0) async -> Bool {
+    var request = URLRequest(url: url)
+    request.httpMethod = "GET"
+    request.timeoutInterval = timeout
 
-final class MockLayaServeProtocol: URLProtocol, @unchecked Sendable {
-    private static let lock = NSLock()
-    nonisolated(unsafe) private static var _responseBody: Data = {
-        """
-        {
-            "model": "laya-multilingual-v2",
-            "answers": {
-                "score": {
-                    "type": "score",
-                    "score": 3.4,
-                    "confidence": 0.94,
-                    "probabilities": {
-                        "0": 0.01,
-                        "1": 0.04,
-                        "2": 0.15,
-                        "3": 0.65,
-                        "4": 0.15
-                    },
-                    "legend": {
-                        "0": "Informational",
-                        "1": "Low Risk",
-                        "2": "Moderate Risk",
-                        "3": "High Risk",
-                        "4": "Critical Vulnerability"
-                    }
-                }
-            },
-            "usage": { "input_tokens": 128, "output_tokens": 5 },
-            "server_duration_ms": 11.2
-        }
-        """.data(using: .utf8)!
-    }()
+    let config = URLSessionConfiguration.ephemeral
+    config.timeoutIntervalForRequest = timeout
+    config.timeoutIntervalForResource = timeout
+    let session = URLSession(configuration: config)
 
-    override class func canInit(with request: URLRequest) -> Bool {
-        true
+    do {
+        _ = try await session.data(for: request)
+        return true
+    } catch {
+        return false
     }
-
-    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
-        request
-    }
-
-    override func startLoading() {
-        let response = HTTPURLResponse(
-            url: request.url ?? URL(string: "https://laya.internal-vpc.net:8443/v1/systemone")!,
-            statusCode: 200,
-            httpVersion: "HTTP/1.1",
-            headerFields: [
-                "Content-Type": "application/json",
-                "x-envoy-upstream-service-time": "11.2"
-            ]
-        )!
-        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-        client?.urlProtocol(self, didLoad: Self.lock.withLock { Self._responseBody })
-        client?.urlProtocolDidFinishLoading(self)
-    }
-
-    override func stopLoading() {}
 }
 
 print("=== 03-PrivateLayaServer: Self-Hosted Enterprise Laya Cluster ===")
-print("Architecture: Private VPC Kubernetes cluster running `laya-serve`")
-print("Target Endpoint: Custom internal DNS with TLS and Bearer Token Auth")
+print("Architecture: Self-hosted laya-serve cluster")
 
-let serveURLEnv = ProcessInfo.processInfo.environment["LAYA_SERVE_URL"]
-let serveTokenEnv = ProcessInfo.processInfo.environment["LAYA_SERVE_TOKEN"]
-
-let endpoint: LayaEndpoint
-let model: LayaLanguageModel
-
-if let serveURLEnv, let url = URL(string: serveURLEnv) {
-    print("Mode: Live VPC Cluster (\(url.absoluteString))")
-    endpoint = .custom(url)
-    model = LayaLanguageModel(
-        endpoint: endpoint,
-        modelID: "laya-multilingual-v2",
-        apiKey: serveTokenEnv
-    )
-} else {
-    print("Mode: Simulated VPC Cluster (Set LAYA_SERVE_URL to connect to a live cluster)")
-    let defaultVPCURL = URL(string: "https://laya.internal-vpc.net:8443/v1/systemone")!
-    endpoint = .custom(defaultVPCURL)
-
-    let config = URLSessionConfiguration.ephemeral
-    config.protocolClasses = [MockLayaServeProtocol.self]
-    let mockSession = URLSession(configuration: config)
-
-    model = LayaLanguageModel(
-        endpoint: endpoint,
-        modelID: "laya-multilingual-v2",
-        apiKey: "vpc-k8s-service-account-token",
-        session: mockSession
-    )
+let defaultURLString = "http://127.0.0.1:8000/v1/systemone"
+let serveURLString = ProcessInfo.processInfo.environment["LAYA_SERVE_URL"] ?? defaultURLString
+guard let serveURL = URL(string: serveURLString) else {
+    print("Invalid LAYA_SERVE_URL: \(serveURLString)")
+    exit(1)
 }
+
+if !(await probeServer(url: serveURL)) {
+    print("""
+    ================================================================================
+      ⚠️  CONFIGURATION ERROR: LAYA-SERVE UNREACHABLE
+    ================================================================================
+      Error: laya-serve daemon is not reachable at \(serveURL.absoluteString).
+
+      Remediation:
+        laya-serve
+        # Or specify a reachable server:
+        # export LAYA_SERVE_URL="http://127.0.0.1:8000/v1/systemone"
+    ================================================================================
+    """)
+    exit(1)
+}
+
+print("Target Endpoint: \(serveURL.absoluteString)")
+let serveTokenEnv = ProcessInfo.processInfo.environment["LAYA_SERVE_TOKEN"]
+let endpoint = LayaEndpoint.custom(serveURL)
+let model = LayaLanguageModel(
+    endpoint: endpoint,
+    modelID: "laya-multilingual-v2",
+    apiKey: serveTokenEnv
+)
 
 let session = LanguageModelSession(model: model)
 
@@ -140,4 +97,4 @@ for (idx, level) in severityRubric.enumerated() {
     print("    Level \(idx) [\(level)]: \(String(format: "%.1f%%", prob * 100))")
 }
 
-print("\nRequest dispatched over private VPC transport with internal authentication.")
+print("\nRequest dispatched over private laya-serve transport with authentication.")

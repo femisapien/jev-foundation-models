@@ -27,31 +27,6 @@ func resolveAPIKey() -> String? {
     return nil
 }
 
-/// Creates a simulated mock transport for offline demonstration when no live API key is configured.
-func createOfflineMockTransport() -> MockJevTransport {
-    MockJevTransport { request in
-        // Determine whether incoming state matches the AP/KCBD wire story or Google competitor story
-        let state = request.state.lowercased()
-        let isGoogleCompetitor = state.contains("google announces pixel fold")
-        let isAPStoryDuplicate = !isGoogleCompetitor && state.contains("new iphone lineup includes a foldable version")
-
-        let noulValue: Double = isAPStoryDuplicate ? 0.93 : 0.01
-
-        return JevResponse(
-            model: "jev-offline-simulated",
-            answers: [
-                "isDuplicate": JevAnswer(
-                    type: "noul",
-                    noul: noulValue,
-                    confidence: abs(noulValue - 0.5) * 2.0,
-                    probabilities: ["true": noulValue, "false": max(0.0, 1.0 - noulValue)]
-                )
-            ],
-            usage: JevUsage(inputTokens: 540, outputTokens: 22)
-        )
-    }
-}
-
 // MARK: - Console Output & Styling Helpers
 
 func printHeader() {

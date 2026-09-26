@@ -33,49 +33,24 @@ print("=== 02-CloudJevWorker: Lightning-Fast Cloud Ticket Triage ===")
 print("Backend: TypeSafe AI Jev Decision API (System One Cloud)")
 print("Binary footprint: Ultra-lean (Zero Core ML, PyTorch, or weights linked)")
 
-let apiKey = ProcessInfo.processInfo.environment["TYPESAFE_API_KEY"]
+guard let apiKey = ProcessInfo.processInfo.environment["TYPESAFE_API_KEY"], !apiKey.isEmpty else {
+    print("""
+    ================================================================================
+      ⚠️  CONFIGURATION ERROR: MISSING TYPESAFE_API_KEY
+    ================================================================================
+      This example application requires a valid TypeSafe AI API key to evaluate
+      real System One decision models in the cloud. Synthetic mock bypasses are
+      not permitted.
 
-let model: JevLanguageModel
-if let apiKey, !apiKey.isEmpty {
-    print("Mode: Live TypeSafe Cloud API (Key: \(apiKey.prefix(4))...)")
-    model = JevLanguageModel(apiKey: apiKey)
-} else {
-    print("Mode: Deterministic Offline Mock Transport (Set TYPESAFE_API_KEY for live cloud API)")
-    let mock = MockJevTransport { request in
-        // Return synthetic response based on question type
-        var answers: [String: SystemOneAnswer] = [:]
-        for (key, question) in request.questions {
-            switch question {
-            case .noul:
-                // High urgency for outage ticket
-                answers[key] = SystemOneAnswer(type: "noul", noul: 0.94, confidence: 0.95)
-            case .choice:
-                // Route to Infrastructure
-                answers[key] = SystemOneAnswer(
-                    type: "choice",
-                    choice: EngineeringTeam.infrastructure.optionIdentifier,
-                    confidence: 0.92,
-                    probabilities: [
-                        EngineeringTeam.infrastructure.optionIdentifier: 0.92,
-                        EngineeringTeam.security.optionIdentifier: 0.05,
-                        EngineeringTeam.billing.optionIdentifier: 0.02,
-                        EngineeringTeam.mobile.optionIdentifier: 0.01
-                    ]
-                )
-            case .score:
-                answers[key] = SystemOneAnswer(type: "score", score: 3.0, confidence: 0.90)
-            }
-        }
-        return JevResponse(
-            model: "jev-latest",
-            answers: answers,
-            usage: SystemOneUsage(inputTokens: 48, outputTokens: 2),
-            serverDurationMs: 14.8
-        )
-    }
-    model = JevLanguageModel(transport: mock)
+      Remediation:
+        export TYPESAFE_API_KEY="your-typesafe-api-key"
+    ================================================================================
+    """)
+    exit(1)
 }
 
+print("Mode: Live TypeSafe Cloud API (Key: \(apiKey.prefix(4))...)")
+let model = JevLanguageModel(apiKey: apiKey)
 let session = LanguageModelSession(model: model)
 
 let ticket = """

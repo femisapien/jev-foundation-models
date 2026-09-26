@@ -33,25 +33,43 @@ targets: [
 
 ## Running the Sample
 
-Execute with or without an API key:
+This sample requires a valid **TypeSafe AI API key** (`TYPESAFE_API_KEY`) to evaluate real System One decision models in the cloud. In accordance with the project's strict real execution directive, synthetic mock bypasses are not used; if the environment variable is missing, the application terminates immediately with a formatted configuration error banner and remediation instructions.
 
 ```bash
 cd Examples/TraitSamples/02-CloudJevWorker
 
-# Run in offline mock mode:
+# Set your API key and run:
+export TYPESAFE_API_KEY="your-api-key"
 swift run
-
-# Run with live TypeSafe AI cloud API:
-TYPESAFE_API_KEY="your-api-key" swift run
 ```
 
-### Sample Output
+### Missing Configuration Output
+
+If `TYPESAFE_API_KEY` is not set:
 
 ```text
 === 02-CloudJevWorker: Lightning-Fast Cloud Ticket Triage ===
 Backend: TypeSafe AI Jev Decision API (System One Cloud)
 Binary footprint: Ultra-lean (Zero Core ML, PyTorch, or weights linked)
-Mode: Deterministic Offline Mock Transport (Set TYPESAFE_API_KEY for live cloud API)
+================================================================================
+  ⚠️  CONFIGURATION ERROR: MISSING TYPESAFE_API_KEY
+================================================================================
+  This example application requires a valid TypeSafe AI API key to evaluate
+  real System One decision models in the cloud. Synthetic mock bypasses are
+  not permitted.
+
+  Remediation:
+    export TYPESAFE_API_KEY="your-typesafe-api-key"
+================================================================================
+```
+
+### Sample Output (Live Cloud API)
+
+```text
+=== 02-CloudJevWorker: Lightning-Fast Cloud Ticket Triage ===
+Backend: TypeSafe AI Jev Decision API (System One Cloud)
+Binary footprint: Ultra-lean (Zero Core ML, PyTorch, or weights linked)
+Mode: Live TypeSafe Cloud API (Key: ts_l...)
 
 --- Incoming Ticket ---
 INCIDENT #89412

@@ -5,7 +5,22 @@ import JevFoundationModels
 printHeader()
 
 // 1. Initialize Transport, Model, and Resilience Policy
-let apiKey = resolveAPIKey()
+guard let apiKey = resolveAPIKey(), !apiKey.isEmpty else {
+    print("""
+    ================================================================================
+      ⚠️  CONFIGURATION ERROR: MISSING TYPESAFE_API_KEY
+    ================================================================================
+      This example application requires a valid TypeSafe AI API key to evaluate
+      real System One decision models. Synthetic mock bypasses are not permitted.
+
+      Remediation:
+        export TYPESAFE_API_KEY="your-typesafe-api-key"
+        # Or add TYPESAFE_API_KEY=your-key to your local .env file.
+    ================================================================================
+    """)
+    exit(1)
+}
+
 let retryPolicy = RetryPolicy(
     maxAttempts: 3,
     initialDelay: .milliseconds(250),
@@ -14,15 +29,8 @@ let retryPolicy = RetryPolicy(
     retryableStatuses: [429, 529]
 )
 
-let model: JevLanguageModel
-
-if let key = apiKey {
-    print("🔑 Live TypeSafe AI API key detected. Evaluating against Jev cloud endpoint.")
-    model = JevLanguageModel(apiKey: key, retryPolicy: retryPolicy)
-} else {
-    print("ℹ️  No TYPESAFE_API_KEY detected. Running in deterministic offline demonstration mode.")
-    model = JevLanguageModel(transport: createOfflineMockTransport(), retryPolicy: retryPolicy)
-}
+print("🔑 Live TypeSafe AI API key detected. Evaluating against Jev cloud endpoint.")
+let model = JevLanguageModel(apiKey: apiKey, retryPolicy: retryPolicy)
 
 let routingPolicy = RoutingPolicy(
     escalateBelow: 0.60,

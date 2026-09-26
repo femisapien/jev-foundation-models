@@ -33,19 +33,46 @@ targets: [
 
 ## Running the Sample
 
-Execute with or without an API key:
+This sample requires both a local compiled Core ML model (`LayaDecisionModel.mlmodelc`) and a valid **TypeSafe AI API key** (`TYPESAFE_API_KEY`) for cloud escalation. In accordance with the project's strict real execution directive, synthetic mock bypasses are not used; if any prerequisite is missing, the application terminates immediately with a formatted configuration error banner and remediation instructions.
 
 ```bash
 cd Examples/TraitSamples/04-HybridRouter
 
-# Run in offline mock/local mode:
-swift run
+# Set required environment variables:
+export TYPESAFE_API_KEY="your-api-key"
+export LAYA_MODEL_PATH="/path/to/LayaDecisionModel.mlmodelc"
 
-# Run with live TypeSafe AI cloud API escalation:
-TYPESAFE_API_KEY="your-api-key" swift run
+# Run the hybrid router:
+swift run
 ```
 
-### Sample Output
+### Missing Configuration Output
+
+If prerequisites are missing:
+
+```text
+=== 04-HybridRouter: Local-First Intelligent Confidence Routing ===
+Architecture: Multi-trait execution linking on-device ANE + cloud Jev
+Policy: Local Laya evaluated first; escalates to Cloud Jev when confidence < 80%
+
+================================================================================
+  ⚠️  CONFIGURATION ERROR: MISSING HYBRID ROUTER PREREQUISITES
+================================================================================
+  The Hybrid Router evaluates requests locally on Apple Neural Engine first,
+  escalating to TypeSafe AI Jev in the cloud when confidence falls below 80%.
+  Synthetic mocks and fallbacks are not permitted.
+
+  Missing Configuration:
+    • TYPESAFE_API_KEY environment variable is missing or empty.
+    • Compiled Core ML model not found at ~/Library/Application Support/dev.peterfriese.mailtriageapp/Models/LayaDecisionModel.mlmodelc or LAYA_MODEL_PATH.
+
+  Remediation:
+    export TYPESAFE_API_KEY="your-typesafe-api-key"
+    export LAYA_MODEL_PATH="/path/to/LayaDecisionModel.mlmodelc"
+================================================================================
+```
+
+### Sample Output (Configured Execution)
 
 ```text
 === 04-HybridRouter: Local-First Intelligent Confidence Routing ===

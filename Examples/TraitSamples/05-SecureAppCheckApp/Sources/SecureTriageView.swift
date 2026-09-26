@@ -27,27 +27,6 @@ enum SecureTriageCategory: String, Choosable, CaseIterable {
             return "Product improvement ideas and general user feedback"
         }
     }
-
-    static func mockGatewayResponse() -> JevResponse {
-        JevResponse(
-            model: "jev-latest",
-            answers: [
-                "choice": SystemOneAnswer(
-                    type: "choice",
-                    choice: SecureTriageCategory.dataBreach.optionIdentifier,
-                    confidence: 0.98,
-                    probabilities: [
-                        SecureTriageCategory.dataBreach.optionIdentifier: 0.98,
-                        SecureTriageCategory.systemOutage.optionIdentifier: 0.01,
-                        SecureTriageCategory.billingDispute.optionIdentifier: 0.005,
-                        SecureTriageCategory.featureRequest.optionIdentifier: 0.005
-                    ]
-                )
-            ],
-            usage: SystemOneUsage(inputTokens: 64, outputTokens: 2),
-            serverDurationMs: 18.5
-        )
-    }
 }
 
 // MARK: - Proxy Gateway Environment
@@ -55,7 +34,6 @@ enum SecureTriageCategory: String, Choosable, CaseIterable {
 enum ProxyEnvironment: String, CaseIterable, Identifiable, Sendable {
     case localEmulator = "Local Emulator (Port 5001)"
     case production = "Production Cloud Functions"
-    case simulated = "Simulated Gateway (Offline)"
 
     var id: String { rawValue }
 
@@ -65,8 +43,6 @@ enum ProxyEnvironment: String, CaseIterable, Identifiable, Sendable {
             return URL(string: "http://127.0.0.1:5001/\(projectID)/us-central1/jevProxy")!
         case .production:
             return URL(string: "https://us-central1-\(projectID).cloudfunctions.net/jevProxy")!
-        case .simulated:
-            return URL(string: "https://simulated-appcheck.local/jevProxy")!
         }
     }
 }
@@ -77,7 +53,7 @@ enum ProxyEnvironment: String, CaseIterable, Identifiable, Sendable {
 @MainActor
 final class SecureTriageViewModel {
     var projectID: String = "my-secure-project"
-    var environment: ProxyEnvironment = .simulated
+    var environment: ProxyEnvironment = .localEmulator
     var customAppCheckToken: String = "debug-app-check-token-local"
     var inputText: String = "Customer database dump leaked on public forum with session tokens."
     var isEvaluating: Bool = false
@@ -115,19 +91,10 @@ final class SecureTriageViewModel {
         let token = customAppCheckToken
         let endpoint = environment.endpoint(projectID: projectID)
 
-        let transport: any JevTransport
-        if environment == .simulated {
-            transport = MockJevTransport { _ in
-                // Simulates backend response after verifying App Check header
-                SecureTriageCategory.mockGatewayResponse()
-            }
-        } else {
-            // Native ProxyTransport configured with App Check header
-            transport = ProxyTransport(
-                proxyEndpoint: endpoint,
-                credential: .header(name: "X-Firebase-AppCheck", provider: { token })
-            )
-        }
+        let transport = ProxyTransport(
+            proxyEndpoint: endpoint,
+            credential: .header(name: "X-Firebase-AppCheck", provider: { token })
+        )
 
         let model = JevLanguageModel(transport: transport)
         return LanguageModelSession(model: model)
@@ -151,9 +118,7 @@ public struct SecureTriageView: View {
                         }
                     }
 
-                    if viewModel.environment != .simulated {
-                        TextField("Firebase Project ID", text: $viewModel.projectID)
-                    }
+                    TextField("Firebase Project ID", text: $viewModel.projectID)
 
                     TextField("App Check Token / Debug Secret", text: $viewModel.customAppCheckToken)
                         .font(.caption)

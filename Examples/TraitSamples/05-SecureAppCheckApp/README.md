@@ -53,9 +53,28 @@ targets: [
 
 ---
 
-## 🚀 Quickstart: Local Emulator Mode (Offline Testing)
+## 🚀 Quickstart: Local Emulator Mode (Firebase Emulator Suite)
 
-You can run and test the complete pipeline locally without deploying anything to Google Cloud:
+This sample requires either the local **Firebase Emulator Suite** or a deployed **Google Cloud Function** gateway. In accordance with the project's strict real execution directive, synthetic mock bypasses are not used; if the local emulator is unreachable on port 5001, the application fails fast with a formatted configuration error banner and remediation instructions.
+
+### Missing Configuration Output
+
+If the emulator is not running when running locally:
+
+```text
+================================================================================
+  ⚠️  CONFIGURATION ERROR: FIREBASE EMULATOR NOT REACHABLE
+================================================================================
+  The Firebase Local Emulator is required on port 5001 to evaluate the
+  App Check secure proxy. Synthetic mock bypasses are not permitted.
+
+  Remediation:
+    ./run-emulator-and-cli.sh
+    # Or start manually:
+    # cd Examples/TraitSamples/05-SecureAppCheckApp/backend
+    # firebase emulators:start --only functions
+================================================================================
+```
 
 ### 1. Start the Firebase Emulator Suite
 
@@ -78,10 +97,10 @@ cd Examples/TraitSamples/05-SecureAppCheckApp
 swift run SecureAppCheckApp
 ```
 
-- In the app UI, select **Local Emulator (Port 5001)** or **Simulated Gateway (Offline)**.
+- In the app UI, select **Local Emulator (Port 5001)** or **Production Cloud Functions**.
 - Enter your project ID (or default `demo-project`).
 - Click **Evaluate via Secure Proxy**.
-- Watch the simulated or emulator gateway verify the App Check header and proxy the triage evaluation!
+- Watch the emulator gateway verify the App Check header and proxy the triage evaluation!
 
 ---
 
@@ -121,7 +140,7 @@ swift run SecureAppCheckApp --cli --emulator
 # Against live production gateway:
 swift run SecureAppCheckApp --cli --live
 
-# Auto-detects local emulator, fallback to simulated offline:
+# Auto-detects local emulator (requires running emulator on port 5001):
 swift run SecureAppCheckApp --cli
 ```
 

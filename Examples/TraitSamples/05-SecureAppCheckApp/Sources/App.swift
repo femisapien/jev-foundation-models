@@ -33,7 +33,6 @@ struct SecureAppCheckApp: App {
     }
 
     nonisolated private static func runCLI() async -> Int32 {
-        let isEmulator = CommandLine.arguments.contains("--emulator")
         let isLive = CommandLine.arguments.contains("--live")
 
         let projectID = "my-secure-project"
@@ -41,45 +40,43 @@ struct SecureAppCheckApp: App {
         let liveURL = URL(string: "https://us-central1-\(projectID).cloudfunctions.net/jevProxy")!
 
         let targetURL: URL
-        let useSimulated: Bool
 
         if isLive {
             targetURL = liveURL
-            useSimulated = false
             print("Target mode: Live Production Gateway")
-        } else if isEmulator {
-            targetURL = emulatorURL
-            useSimulated = false
-            print("Target mode: Local Firebase Emulator")
         } else {
-            // Auto-detect if emulator is reachable
+            // Probe port 5001 to ensure the Firebase Local Emulator is running
             if await isEmulatorOnline() {
                 targetURL = emulatorURL
-                useSimulated = false
-                print("Target mode: Auto-detected Local Firebase Emulator")
+                print("Target mode: Local Firebase Emulator (\(emulatorURL.absoluteString))")
             } else {
-                targetURL = URL(string: "https://simulated-appcheck.local/jevProxy")!
-                useSimulated = true
-                print("Target mode: Local Emulator offline -> Falling back to Simulated Mock Gateway")
+                print("""
+                ================================================================================
+                  ⚠️  CONFIGURATION ERROR: FIREBASE EMULATOR NOT REACHABLE
+                ================================================================================
+                  The Firebase Local Emulator is required on port 5001 to evaluate the
+                  App Check secure proxy. Synthetic mock bypasses are not permitted.
+
+                  Remediation:
+                    ./run-emulator-and-cli.sh
+                    # Or start manually:
+                    # cd Examples/TraitSamples/05-SecureAppCheckApp/backend
+                    # firebase emulators:start --only functions
+                ================================================================================
+                """)
+                exit(1)
             }
         }
 
-        let transport: any JevTransport
-        if useSimulated {
-            transport = MockJevTransport { _ in
-                SecureTriageCategory.mockGatewayResponse()
-            }
-        } else {
-            transport = ProxyTransport(
-                proxyEndpoint: targetURL,
-                credential: .header(name: "X-Firebase-AppCheck", provider: { "debug-app-check-token-local" }),
-                session: {
-                    let config = URLSessionConfiguration.ephemeral
-                    config.timeoutIntervalForRequest = 10.0
-                    return URLSession(configuration: config)
-                }()
-            )
-        }
+        let transport = ProxyTransport(
+            proxyEndpoint: targetURL,
+            credential: .header(name: "X-Firebase-AppCheck", provider: { "debug-app-check-token-local" }),
+            session: {
+                let config = URLSessionConfiguration.ephemeral
+                config.timeoutIntervalForRequest = 10.0
+                return URLSession(configuration: config)
+            }()
+        )
 
         let alertText = "Customer database dump leaked on public forum with session tokens."
 
