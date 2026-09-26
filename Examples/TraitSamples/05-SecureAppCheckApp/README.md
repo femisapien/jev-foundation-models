@@ -99,3 +99,37 @@ To deploy to real Google Cloud infrastructure with hardware App Attest:
    `backend/SETUP-PRODUCTION.md`
 
 3. In the client app, select **Production Cloud Functions** and evaluate tickets directly against your live deployed gateway.
+
+---
+
+## 🛠️ CLI Runner & Automated Emulator Testing
+
+You can evaluate the secure proxy directly via the command line or with automated scripts:
+
+### Single Command: Start Emulator & Run CLI
+To start the emulator, poll for readiness, execute the CLI decision evaluation, and shut down cleanly:
+```bash
+./run-emulator-and-cli.sh
+```
+
+### Standalone CLI Execution
+Run the CLI against an existing emulator or live backend:
+```bash
+# Against local emulator:
+swift run SecureAppCheckApp --cli --emulator
+
+# Against live production gateway:
+swift run SecureAppCheckApp --cli --live
+
+# Auto-detects local emulator, fallback to simulated offline:
+swift run SecureAppCheckApp --cli
+```
+
+### Xcode Project (`SecureAppCheckApp.xcodeproj`)
+Open `SecureAppCheckApp.xcodeproj` in Xcode 27+ to run the native SwiftUI app on macOS or iOS simulator.
+Build with FlowDeck:
+```bash
+flowdeck build -w Examples/TraitSamples/05-SecureAppCheckApp/SecureAppCheckApp.xcodeproj -s SecureAppCheckApp -D "My Mac"
+flowdeck build -w Examples/TraitSamples/05-SecureAppCheckApp/SecureAppCheckApp.xcodeproj -s SecureAppCheckApp -S "iPhone 18 Pro"
+```
+

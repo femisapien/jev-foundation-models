@@ -27,6 +27,27 @@ enum SecureTriageCategory: String, Choosable, CaseIterable {
             return "Product improvement ideas and general user feedback"
         }
     }
+
+    static func mockGatewayResponse() -> JevResponse {
+        JevResponse(
+            model: "jev-latest",
+            answers: [
+                "choice": SystemOneAnswer(
+                    type: "choice",
+                    choice: SecureTriageCategory.dataBreach.optionIdentifier,
+                    confidence: 0.98,
+                    probabilities: [
+                        SecureTriageCategory.dataBreach.optionIdentifier: 0.98,
+                        SecureTriageCategory.systemOutage.optionIdentifier: 0.01,
+                        SecureTriageCategory.billingDispute.optionIdentifier: 0.005,
+                        SecureTriageCategory.featureRequest.optionIdentifier: 0.005
+                    ]
+                )
+            ],
+            usage: SystemOneUsage(inputTokens: 64, outputTokens: 2),
+            serverDurationMs: 18.5
+        )
+    }
 }
 
 // MARK: - Proxy Gateway Environment
@@ -96,26 +117,9 @@ final class SecureTriageViewModel {
 
         let transport: any JevTransport
         if environment == .simulated {
-            transport = MockJevTransport { request in
+            transport = MockJevTransport { _ in
                 // Simulates backend response after verifying App Check header
-                JevResponse(
-                    model: "jev-latest",
-                    answers: [
-                        "choice": SystemOneAnswer(
-                            type: "choice",
-                            choice: SecureTriageCategory.dataBreach.optionIdentifier,
-                            confidence: 0.98,
-                            probabilities: [
-                                SecureTriageCategory.dataBreach.optionIdentifier: 0.98,
-                                SecureTriageCategory.systemOutage.optionIdentifier: 0.01,
-                                SecureTriageCategory.billingDispute.optionIdentifier: 0.005,
-                                SecureTriageCategory.featureRequest.optionIdentifier: 0.005
-                            ]
-                        )
-                    ],
-                    usage: SystemOneUsage(inputTokens: 64, outputTokens: 2),
-                    serverDurationMs: 18.5
-                )
+                SecureTriageCategory.mockGatewayResponse()
             }
         } else {
             // Native ProxyTransport configured with App Check header
