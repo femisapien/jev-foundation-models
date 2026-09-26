@@ -26,7 +26,7 @@ To solve this, we place a lightweight **Firebase Cloud Function (2nd Gen)** betw
 │                                                         │
 │  1. Device creates key pair in Secure Enclave           │
 │  2. Firebase App Check obtains Apple Attestation token  │
-│  3. FirebaseAppCheckTransport attaches token header     │
+│  3. ProxyTransport attaches dynamic token header        │
 │  4. Standard LanguageModelSession executes decision     │
 └────────────────────────────┬────────────────────────────┘
                              │
@@ -201,107 +201,73 @@ struct MyApp: App {
 
 ---
 
-### Step 4: Create the `FirebaseAppCheckTransport`
+### Step 4: Configure the Built-in `ProxyTransport`
 
-> **Architectural Note:** `JevFoundationModels` maintains a strict mandate of **Zero External Third-Party Runtime Dependencies**. Because Swift Package Manager isolates package targets during compilation, vendor SDKs like Firebase cannot be conditionally imported via `#if canImport` from a consuming app without forcing all library users to resolve the entire `firebase-ios-sdk` dependency graph. Therefore, `FirebaseAppCheckTransport.swift` is distributed as a reference drop-in file that compiles natively inside your application target where Firebase is already linked. For technical details, see [Tech Note 0005 — SPM Dependency Isolation & Decoupling Vendor Transports](../tech-notes/0005-spm-dependency-isolation-and-vendor-transports.md).
+`JevFoundationModels` includes **`ProxyTransport`** as an official, built-in transport for mobile applications routing through secure reverse proxies.
 
-Copy `FirebaseAppCheckTransport.swift` from `Integrations/FirebaseAppCheckProxy/` into your app:
+> **Zero Third-Party Runtime Dependencies via Closure Injection:**
+> `JevFoundationModels` maintains a strict mandate of **Zero External Third-Party Runtime Dependencies** ([Tech Note 0005](../tech-notes/0005-spm-dependency-isolation-and-vendor-transports.md)). Rather than forcing all package consumers to compile Google Firebase or Apple DeviceCheck SDKs, `ProxyTransport` uses dynamic closure injection (`Credential.header`, `Credential.bearer`, or `Credential.custom`).
+>
+> Your application target links `FirebaseAppCheck`, and passes an asynchronous token acquisition closure directly into `ProxyTransport`. Token resolution occurs **per attempt inside the retry loop**, ensuring automatic refresh during exponential backoff. For architectural details, see [Tech Note 0010 — Dynamic Credential Resolution & Reverse Proxying with ProxyTransport](../tech-notes/0010-proxy-transport-and-dynamic-attestation.md).
+
+#### Strategy A: Cached Tokens (< 1 ms in-memory lookup, recommended for interactive UI)
 
 ```swift
 import Foundation
 import FirebaseAppCheck
 import JevFoundationModels
 
-/// A transport that delivers Jev requests to your secure proxy with an Apple App Attest token.
-public struct FirebaseAppCheckTransport: JevTransport, Sendable {
-    /// The token acquisition strategy for Firebase App Check.
-    public enum TokenStrategy: Sendable {
-        /// Uses cached in-memory tokens (< 1 ms lookup).
-        /// Recommended for interactive UI, low-latency loops, and continuous decisions.
-        case cached
+let proxyURL = URL(string: "https://us-central1-myproject.cloudfunctions.net/systemone")!
 
-        /// Acquires a one-time consumable token with server-side replay protection (~40–120 ms token exchange).
-        /// Recommended for sensitive operations, billing-sensitive decisions, or high-security actions.
-        case singleUse
+// Dynamically resolves cached App Check tokens from memory
+let transport = ProxyTransport(
+    proxyEndpoint: proxyURL,
+    credential: .header(name: "X-Firebase-AppCheck") {
+        try await AppCheck.appCheck().token(forcingRefresh: false).token
     }
+)
+```
 
-    public let proxyEndpoint: URL?
-    public let session: URLSession
-    public let tokenStrategy: TokenStrategy
+#### Strategy B: Single-Use Consumable Tokens (Replay-protected, recommended for high-value decisions)
 
-    public init(
-        proxyEndpoint: URL? = nil,
-        session: URLSession = .shared,
-        tokenStrategy: TokenStrategy = .cached
-    ) {
-        self.proxyEndpoint = proxyEndpoint
-        self.session = session
-        self.tokenStrategy = tokenStrategy
+```swift
+import Foundation
+import FirebaseAppCheck
+import JevFoundationModels
+
+let proxyURL = URL(string: "https://us-central1-myproject.cloudfunctions.net/systemone")!
+
+// Dynamically mints a consumable limited-use token per request attempt
+let transport = ProxyTransport(
+    proxyEndpoint: proxyURL,
+    credential: .header(name: "X-Firebase-AppCheck") {
+        try await AppCheck.appCheck().limitedUseToken().token
     }
-
-    public func send(
-        request: JevRequest,
-        apiKey: String?,
-        endpoint: URL
-    ) async throws -> JevResponse {
-        // 1. Obtain App Check token based on chosen strategy
-        let tokenString: String
-        switch tokenStrategy {
-        case .cached:
-            let token = try await AppCheck.appCheck().token(forcingRefresh: false)
-            tokenString = token.token
-        case .singleUse:
-            let token = try await AppCheck.appCheck().limitedUseToken()
-            tokenString = token.token
-        }
-
-        // 2. Prepare HTTP request directed to your Firebase Cloud Function
-        let targetURL = proxyEndpoint ?? endpoint
-        var urlRequest = URLRequest(url: targetURL)
-        urlRequest.httpMethod = "POST"
-        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.setValue(tokenString, forHTTPHeaderField: "X-Firebase-AppCheck")
-        urlRequest.httpBody = try JSONEncoder().encode(request)
-
-        // 3. Dispatch over URLSession
-        let (data, response) = try await session.data(for: urlRequest)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw JevError.networkError("Invalid HTTP response received from proxy.")
-        }
-
-        guard (200...299).contains(httpResponse.statusCode) else {
-            let body = String(data: data, encoding: .utf8) ?? "Unknown server error"
-            throw JevError.apiError(statusCode: httpResponse.statusCode, message: body)
-        }
-
-        do {
-            return try JSONDecoder().decode(JevResponse.self, from: data)
-        } catch {
-            throw JevError.decodingError("Failed to decode JevResponse from proxy: \(error.localizedDescription)")
-        }
-    }
-}
+)
 ```
 
 ---
 
 ### Step 5: Evaluate with Apple Foundation Models
 
-At your application call site, you use the standard Apple Foundation Models API:
+At your application call site, configure `JevLanguageModel` with the configured `ProxyTransport` and evaluate via standard Apple Foundation Models APIs:
 
 ```swift
 import FoundationModels
 import JevFoundationModels
+import FirebaseAppCheck
 
-// 1. Initialize your secure transport pointing to your Cloud Function
+// 1. Initialize your secure transport pointing to your Cloud Function proxy
 let proxyURL = URL(string: "https://us-central1-myproject.cloudfunctions.net/systemone")!
+let transport = ProxyTransport(
+    proxyEndpoint: proxyURL,
+    credential: .header(name: "X-Firebase-AppCheck") {
+        try await AppCheck.appCheck().token(forcingRefresh: false).token
+    }
+)
 
-// Choose either .cached (fastest, < 1 ms token lookup) or .singleUse (replay-protected)
-let transport = FirebaseAppCheckTransport(proxyEndpoint: proxyURL, tokenStrategy: .cached)
-
-// 2. Configure JevLanguageModel with the custom transport
-// No API key is needed — key management lives on the server side of the proxy
+// 2. Configure JevLanguageModel with the proxy transport
+// No API key is needed on the client — key injection happens server-side in the Cloud Function
 let jev = JevLanguageModel(transport: transport)
 
 // 3. Initialize standard Apple LanguageModelSession
@@ -443,10 +409,12 @@ Firebase App Check provides **Limited-Use Tokens** designed for replay protectio
    Set the environment variable `CONSUME_APP_CHECK=true` in your function's environment.
 
 3. **Configure Swift Client:**
-   Initialize `FirebaseAppCheckTransport` with `.singleUse`:
+   Initialize `ProxyTransport` with `limitedUseToken()`:
    ```swift
-   let transport = FirebaseAppCheckTransport(
+   let transport = ProxyTransport(
        proxyEndpoint: proxyURL,
-       tokenStrategy: .singleUse
+       credential: .header(name: "X-Firebase-AppCheck") {
+           try await AppCheck.appCheck().limitedUseToken().token
+       }
    )
    ```

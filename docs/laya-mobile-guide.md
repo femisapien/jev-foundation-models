@@ -141,7 +141,12 @@ func resolveSystemOneModel() -> any LanguageModel {
         return LayaOnDeviceLanguageModel(engine: sharedOnDeviceEngine)
     } else {
         // Lower-memory devices: Route via hardware-attested App Check proxy
-        let transport = FirebaseAppCheckTransport(proxyEndpoint: cloudProxyURL, tokenStrategy: .cached)
+        let transport = ProxyTransport(
+            proxyEndpoint: cloudProxyURL,
+            credential: .header(name: "X-Firebase-AppCheck") {
+                try await AppCheck.appCheck().token(forcingRefresh: false).token
+            }
+        )
         return JevLanguageModel(transport: transport)
     }
 }
