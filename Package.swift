@@ -1,4 +1,4 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.1
 import PackageDescription
 
 let package = Package(
@@ -46,6 +46,37 @@ let package = Package(
             targets: ["LayaDemo"]
         )
     ],
+    traits: [
+        .trait(
+            name: "Jev",
+            description: "Enables TypeSafe Jev hosted API client"
+        ),
+        .trait(
+            name: "Laya",
+            description: "Enables on-device Laya decision models via Core ML and Apple Neural Engine"
+        ),
+        .trait(
+            name: "LayaServe",
+            description: "Enables HTTP transport for self-hosted laya-serve instances"
+        ),
+        .trait(
+            name: "OnDevice",
+            description: "Enables on-device decision model capabilities",
+            enabledTraits: ["Laya"]
+        ),
+        .trait(
+            name: "Remote",
+            description: "Enables remote hosted and self-hosted decision model clients",
+            enabledTraits: ["Jev", "LayaServe"]
+        ),
+        .trait(
+            name: "All",
+            description: "Enables all System One model backends and transports",
+            enabledTraits: ["Jev", "Laya", "LayaServe"]
+        ),
+        .default(enabledTraits: ["Jev"])
+    ],
+    dependencies: [],
     targets: [
         .target(
             name: "SystemOneCore",
@@ -99,12 +130,24 @@ let package = Package(
             exclude: ["README.md"]
         ),
         .testTarget(
+            name: "SystemOneCoreTests",
+            dependencies: [
+                "SystemOneCore"
+            ],
+            swiftSettings: [
+                .enableUpcomingFeature("StrictConcurrency")
+            ]
+        ),
+        .testTarget(
             name: "JevFoundationModelsTests",
             dependencies: [
                 "JevFoundationModels",
                 "SystemOneCore",
                 "LayaFoundationModels",
                 "LayaOnDevice"
+            ],
+            swiftSettings: [
+                .enableUpcomingFeature("StrictConcurrency")
             ]
         )
     ]

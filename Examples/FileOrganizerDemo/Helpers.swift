@@ -33,96 +33,6 @@ public func resolveAPIKey() -> String? {
     return nil
 }
 
-// MARK: - Deterministic Offline Mock Transport
-
-/// Generates calibrated Jev responses offline when no live `TYPESAFE_API_KEY` is present.
-public func createOfflineMockTransport() -> MockJevTransport {
-    MockJevTransport { request in
-        let lower = request.state.lowercased()
-
-        let domain: String
-        let workflow: String
-        let sensitiveProb: Double
-        let confidenceScore: Double
-
-        if lower.contains("aws_secret_access_key") || lower.contains("production_credentials.env") || lower.contains("stripe_secret_key") {
-            domain = "engineering"
-            workflow = "action_required"
-            sensitiveProb = 0.99
-            confidenceScore = 3.0
-        } else if lower.contains("invoice:") || lower.contains("wire transfer instructions") || lower.contains("payment due") {
-            domain = "finance"
-            workflow = "action_required"
-            sensitiveProb = 0.01
-            confidenceScore = 3.0
-        } else if lower.contains("master services agreement") || lower.contains("nondisclosure") || lower.contains("confidentiality & proprietary") {
-            domain = "legal"
-            workflow = "archive"
-            sensitiveProb = 0.04
-            confidenceScore = 3.0
-        } else if lower.contains("tokenauthmiddleware") || lower.contains("swift 6 strict concurrency") {
-            domain = "engineering"
-            workflow = "reference"
-            sensitiveProb = 0.01
-            confidenceScore = 3.0
-        } else if lower.contains("system architecture") || lower.contains("jev foundation models subsystem") {
-            domain = "documentation"
-            workflow = "reference"
-            sensitiveProb = 0.01
-            confidenceScore = 3.0
-        } else if lower.contains("weekend to-do") || lower.contains("whole foods") {
-            domain = "personal"
-            workflow = "archive"
-            sensitiveProb = 0.01
-            confidenceScore = 3.0
-        } else {
-            // Ambiguous scratchpad
-            domain = "personal"
-            workflow = "archive"
-            sensitiveProb = 0.12
-            confidenceScore = 1.0 // Low confidence triggers Review_Queue
-        }
-
-        var domainProbs: [String: Double] = [domain: confidenceScore >= 2 ? 0.96 : 0.42]
-        if domain != "personal" {
-            domainProbs["personal"] = 0.04
-        } else {
-            domainProbs["documentation"] = 0.04
-        }
-
-        return JevResponse(
-            model: "jev-offline-simulated",
-            answers: [
-                "domain": JevAnswer(
-                    type: "choice",
-                    choice: domain,
-                    confidence: confidenceScore >= 2 ? 0.96 : 0.42,
-                    probabilities: domainProbs
-                ),
-                "workflowStage": JevAnswer(
-                    type: "choice",
-                    choice: workflow,
-                    confidence: confidenceScore >= 2 ? 0.95 : 0.38,
-                    probabilities: [
-                        workflow: confidenceScore >= 2 ? 0.95 : 0.38
-                    ]
-                ),
-                "isSensitive": JevAnswer(
-                    type: "noul",
-                    noul: sensitiveProb,
-                    confidence: abs(sensitiveProb - 0.5) * 2.0
-                ),
-                "confidenceScore": JevAnswer(
-                    type: "score",
-                    score: confidenceScore,
-                    confidence: 0.90
-                )
-            ],
-            usage: JevUsage(inputTokens: 240, outputTokens: 12)
-        )
-    }
-}
-
 // MARK: - Visual Tree and Table Formatters
 
 public func printDemoBanner() {
@@ -229,8 +139,8 @@ public func printTelemetrySummary(strategy: OrganizationStrategy, organizedFiles
         serverComputeLine = String(format: "  • Jev Model Compute (Cloud):  %.1f ms / decision (Pure System One model inference)", avgServerTime)
         networkOverheadLine = String(format: "  • Network Transit (RTT):      %.1f ms / request (Trans-Atlantic client ↔ server round-trip)", networkOverhead)
     } else {
-        serverComputeLine = "  • Jev Model Compute (Cloud):  n/a (Offline mock simulation)"
-        networkOverheadLine = "  • Network Transit (RTT):      n/a (Offline mock simulation)"
+        serverComputeLine = "  • Jev Model Compute (Cloud):  n/a"
+        networkOverheadLine = "  • Network Transit (RTT):      n/a"
     }
 
     let totalInputTokens = organizedFiles.reduce(0) { $0 + $1.inputTokens }

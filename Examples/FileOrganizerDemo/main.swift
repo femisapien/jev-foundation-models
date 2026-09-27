@@ -45,21 +45,24 @@ if targetDirectory == nil && !isDemoMode {
 
 // MARK: - 1. Resolve Transport & Model
 
-let apiKey = resolveAPIKey()
-let model: JevLanguageModel
+guard let apiKey = resolveAPIKey(), !apiKey.isEmpty else {
+    print("""
+    ================================================================================
+      ⚠️  CONFIGURATION ERROR: MISSING TYPESAFE_API_KEY
+    ================================================================================
+      This example application requires a valid TypeSafe AI API key to evaluate
+      real System One decision models. Synthetic mock bypasses are not permitted.
 
-if let key = apiKey {
-    print("🔑 Live TypeSafe AI API key detected. Evaluating against Jev cloud endpoint.")
-    model = JevLanguageModel(apiKey: key)
-} else {
-    if targetDirectory != nil && shouldApplyMoves {
-        print("❌ Error: TYPESAFE_API_KEY is required when using --apply on actual directories.")
-        print("   The deterministic offline mock is only permitted in --demo mode or --dry-run mode.")
-        exit(1)
-    }
-    print("ℹ️  No TYPESAFE_API_KEY detected. Running in deterministic offline demonstration mode.")
-    model = JevLanguageModel(transport: createOfflineMockTransport())
+      Remediation:
+        export TYPESAFE_API_KEY="your-typesafe-api-key"
+        # Or add TYPESAFE_API_KEY=your-key to your local .env file.
+    ================================================================================
+    """)
+    exit(1)
 }
+
+print("🔑 Live TypeSafe AI API key detected. Evaluating against Jev cloud endpoint.")
+let model = JevLanguageModel(apiKey: apiKey)
 
 // MARK: - 2. Configure Dynamic Profile & LanguageModelSession
 

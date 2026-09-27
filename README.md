@@ -22,7 +22,7 @@ Evaluate strongly typed `@Generable` structs and enums against application state
 > **Safe Deployment Patterns:**
 > - **On-Device Core ML (`LayaOnDevice`)**: Run models locally on hardware with 100% offline privacy and zero secrets required.
 > - **Backend / Server / CLI**: Use `LayaLanguageModel` or `JevLanguageModel` directly in server-side Swift services or CLI tools where environment variables remain server-side.
-> - **Mobile Applications with Cloud APIs**: Route mobile requests through your own authenticated reverse proxy protected by Apple App Attest and Firebase App Check (see [Mobile Security Guide](docs/mobile-security.md)).
+> - **Mobile Applications with Cloud APIs**: Route mobile requests through your own authenticated reverse proxy protected by Apple App Attest and Firebase App Check using the built-in `ProxyTransport` (see [Mobile Security Guide](docs/mobile-security.md) and [Tech Note 0010](tech-notes/0010-proxy-transport-and-dynamic-attestation.md)).
 
 ---
 
@@ -44,7 +44,7 @@ Traditional Large Language Models (LLMs) are generative text engines: coercing t
 
 ## 🚀 Quick Start
 
-### 1. Add Package Dependency
+### 1. Add Package Dependency & Configure Traits
 
 Add `SystemOneFoundationModels` to your `Package.swift` or via Xcode (**File > Add Package Dependencies...**):
 
@@ -53,6 +53,33 @@ dependencies: [
     .package(url: "https://github.com/peterfriese/jev-foundation-models.git", from: "0.2.0")
 ]
 ```
+
+#### Swift 6.1 Package Traits
+
+Using Swift 6.1 Package Traits ([SE-0402](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0402-package-traits.md)), you can enable precisely the backend capabilities you need, eliminating unnecessary dependencies, cloud secrets, or neural model binaries:
+
+```swift
+// Default (TypeSafe Jev hosted cloud API):
+.package(url: "https://github.com/peterfriese/jev-foundation-models.git", from: "0.2.0")
+
+// On-Device only (Core ML + Apple Neural Engine, zero network/cloud code):
+.package(url: "https://github.com/peterfriese/jev-foundation-models.git", from: "0.2.0", traits: ["OnDevice"])
+
+// Remote only (Jev cloud + self-hosted laya-serve HTTP, no Core ML binaries):
+.package(url: "https://github.com/peterfriese/jev-foundation-models.git", from: "0.2.0", traits: ["Remote"])
+
+// All backends (Core ML, Laya HTTP, and Jev cloud):
+.package(url: "https://github.com/peterfriese/jev-foundation-models.git", from: "0.2.0", traits: ["All"])
+```
+
+| Trait | Type | Description |
+| :--- | :--- | :--- |
+| `Jev` *(default)* | Model Boundary | Enables TypeSafe Jev hosted cloud API client (`JevFoundationModels`) |
+| `Laya` | Model Boundary | Enables on-device Laya decision models via Core ML and Apple Neural Engine (`LayaOnDevice`) |
+| `LayaServe` | Model Boundary | Enables HTTP transport for self-hosted `laya-serve` instances (`LayaFoundationModels`) |
+| `OnDevice` | Persona Shorthand | Enables on-device capabilities (activates `["Laya"]`) |
+| `Remote` | Persona Shorthand | Enables remote hosted and self-hosted clients (activates `["Jev", "LayaServe"]`) |
+| `All` | Persona Shorthand | Enables all System One model backends and transports (`["Jev", "Laya", "LayaServe"]`) |
 
 ### Which Target Should I Import?
 
@@ -95,7 +122,7 @@ let model = LayaLanguageModel(endpoint: .localDefault) // or .local(port: 8770) 
 let session = LanguageModelSession(model: model)
 ```
 
-#### Option C: TypeSafe AI Jev Cloud with Resilience
+#### Option C: TypeSafe AI Jev Cloud with Resilience (Server / CLI)
 ```swift
 import FoundationModels
 import JevFoundationModels
@@ -103,6 +130,26 @@ import JevFoundationModels
 // 1. Connect to TypeSafe AI API with automated retry resilience
 let retryPolicy = RetryPolicy(maxAttempts: 3, initialDelay: .milliseconds(250), jitter: 0.15)
 let jev = JevLanguageModel(apiKey: ProcessInfo.processInfo.environment["TYPESAFE_API_KEY"]!, retryPolicy: retryPolicy)
+
+// 2. Initialize native Apple Foundation Models session
+let session = LanguageModelSession(model: jev)
+```
+
+#### Option D: Mobile Reverse Proxy with `ProxyTransport` (Zero Bundled Secrets)
+```swift
+import FoundationModels
+import JevFoundationModels
+import FirebaseAppCheck // or Apple App Attest / OAuth 2.0
+
+// 1. Route mobile requests through your reverse proxy with dynamic device attestation
+let proxyURL = URL(string: "https://us-central1-myproject.cloudfunctions.net/systemone")!
+let transport = ProxyTransport(
+    proxyEndpoint: proxyURL,
+    credential: .header(name: "X-Firebase-AppCheck") {
+        try await AppCheck.appCheck().token(forcingRefresh: false).token
+    }
+)
+let jev = JevLanguageModel(transport: transport)
 
 // 2. Initialize native Apple Foundation Models session
 let session = LanguageModelSession(model: jev)
@@ -154,6 +201,89 @@ let judgement = response.judgement(for: "isUrgent", policy: policy)
 if judgement.decision == .auto && judgement.answer == true {
     print("Urgency: Decisive True -> Page on-call engineering P0")
 }
+```
+
+### 4. Direct Ergonomic Decision Shortcuts (No `@Generable` Boilerplate)
+
+For ad-hoc questions where declaring a composite `@Generable` struct is unnecessary ceremony, `LanguageModelSession` provides direct, calibrated evaluation shortcuts:
+
+#### Binary Probability (`session.probability`)
+Evaluate the calibrated truth probability (0.0 to 1.0) of any statement against state:
+```swift
+// Direct statement evaluation
+let isUrgent = try await session.probability(
+    of: "Is this inquiry urgent or time-sensitive?",
+    state: ticket
+)
+print("Urgency probability: \(isUrgent)") // e.g. 0.94
+
+// Optional criteria steering
+let isSpam = try await session.probability(
+    of: "Is this message phishing or malicious?",
+    state: emailBody,
+    criteria: (
+        whenTrue: "requests wire transfers, credentials, or urgent gift cards",
+        whenFalse: "routine correspondence from an existing vendor"
+    )
+)
+```
+
+#### Strongly-Typed Categorical Choice (`session.choice` with `Choosable`)
+Evaluate discrete categorization across cases of any Swift enum conforming to `Choosable`:
+```swift
+enum TicketPriority: String, Choosable {
+    case critical = "CRITICAL"
+    case high = "HIGH"
+    case normal = "NORMAL"
+    case low = "LOW"
+
+    var optionDescription: String? {
+        switch self {
+        case .critical: "Complete service outage affecting all users"
+        case .high: "Core workflow degraded"
+        case .normal: "Standard request or minor bug"
+        case .low: "Cosmetic issue or feature request"
+        }
+    }
+}
+
+let choice = try await session.choice(
+    "Select the triage priority",
+    from: TicketPriority.self,
+    state: ticket
+)
+
+print("Winning case: \(choice.value)")             // .critical
+print("Model confidence: \(choice.confidence)")     // 0.92
+print("Distribution: \(choice.distribution)")       // [.critical: 0.92, .high: 0.07, ...]
+print("P(critical): \(choice.probability(of: .critical))")
+```
+
+#### Dynamic String Options (`session.choice`)
+Categorize state among dynamic runtime string options:
+```swift
+let routing = try await session.choice(
+    "Which team should handle this request?",
+    options: ["billing", "technical", "account"],
+    state: ticket
+)
+print("Chosen route: \(routing.value)")        // "billing"
+print("Confidence: \(routing.confidence)")     // 0.95
+```
+
+#### Ordinal Rubric Scoring (`session.score`)
+Rate state across ordered rubric levels to obtain both the discrete winner and the probability-weighted continuous mean score:
+```swift
+let frustration = try await session.score(
+    "Rate customer frustration level based on sentiment and phrasing",
+    levels: ["Calm", "Mildly Annoyed", "Frustrated", "Extremely Irate"],
+    state: ticket
+)
+
+print("Continuous mean: \(frustration.value)")              // 2.75 (0...3 scale)
+print("Most likely level: \(frustration.mostLikelyLevel)")   // "Extremely Irate"
+print("Level index: \(frustration.mostLikelyIndex)")        // 3
+print("Probabilities: \(frustration.probabilities)")         // [0.01, 0.04, 0.15, 0.80]
 ```
 
 ---
@@ -214,7 +344,7 @@ For more in-depth documentation, see:
 * [Mobile Deployment & Core ML Guide](docs/laya-mobile-guide.md)
 * [Confidence Routing Guide](docs/confidence-routing.md)
 * [Resilience & Retries Guide](docs/resilience-and-retries.md)
-* [Mobile Security Guide (App Check)](docs/mobile-security.md)
+* [Mobile Security Guide (ProxyTransport & App Check)](docs/mobile-security.md)
 * [Type Mapping Guide](docs/mapping-guide.md)
 * [Tech Notes Index](tech-notes/README.md)
 * [Contributing Guide](CONTRIBUTING.md)

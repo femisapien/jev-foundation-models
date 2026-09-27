@@ -6,13 +6,20 @@ This directory contains reference applications, production examples, and runnabl
 
 ## 🧭 Demos & Reference Implementations Comparison
 
-| Demo / Application | Format | Target / Backend | API Key Required? | Primary Concepts Demonstrated |
+> ⚠️ **Strict Real Execution Mandate**: Example applications and CLI demonstrators are production-representative showcases, **not unit tests**. They **do not use mock fallbacks or synthetic bypasses**. Each application requires real credentials (e.g. `TYPESAFE_API_KEY`), running daemons (e.g. `laya-serve`), or actual emulators (e.g. Firebase Local Emulator). If a prerequisite is missing or unreachable, the application fails fast immediately with a formatted remediation banner directing you how to configure the environment. Offline mocks are strictly reserved for automated test suites in `Tests/`.
+
+| Demo / Application | Format | Target / Backend | Prerequisites / Credentials | Primary Concepts Demonstrated |
 | :--- | :--- | :--- | :---: | :--- |
-| [**MailTriageApp**](MailTriageApp/README.md) | Full macOS & iOS SwiftUI App | Pluggable (Core ML, Local/Remote Laya, Jev Cloud, Mock) | Optional (Keychain managed) | Flagship 3-pane email triage, 5 selectable backends, FactoryKit DI, Liquid Glass UI, urgency priority tokens, batch triage with cancellation. |
-| [**LayaDemo**](LayaDemo/README.md) | CLI Executable | `LayaFoundationModels` (`POST /v1/systemone`) | ❌ No API key | 100% free local evaluation against `laya-serve` on `localhost:8000` or custom endpoint. Zero cloud accounts required. |
+| [**MailTriageApp**](MailTriageApp/README.md) | Full macOS & iOS SwiftUI App | Pluggable (Core ML, Local/Remote Laya, Jev Cloud, Apple LLM) | Optional (Keychain managed) | Flagship 3-pane email triage, 5 selectable backends, FactoryKit DI, Liquid Glass UI, urgency priority tokens, batch triage with cancellation. |
+| [**LayaDemo**](LayaDemo/README.md) | CLI Executable | `LayaFoundationModels` (`POST /v1/systemone`) | `laya-serve` daemon | 100% free local evaluation against `laya-serve` on `localhost:8000` or custom endpoint. Zero cloud accounts required. |
 | [**TicketTriageDemo**](TicketTriageDemo/README.md) | CLI Executable | `JevFoundationModels` | ✅ Yes (`TYPESAFE_API_KEY`) | Customer support ticket routing, RFC 9110 HTTP retry resilience (`RetryPolicy`), multi-primitive `@Generable` schema, confidence routing. |
 | [**FileOrganizerDemo**](FileOrganizerDemo/README.md) | CLI Executable | `JevFoundationModels` | Optional (`--demo` offline mode) | Foundation Models **Dynamic Profiles**, runtime session adaptation (`@SessionPropertyEntry`), turn isolation (`.historyTransform`), sensitive file quarantine. |
 | [**DuplicateArticleDemo**](DuplicateArticleDemo/README.md) | CLI Executable | `JevFoundationModels` | Optional (Built-in offline mode) | Two-layer content deduplication (exact fast-path + semantic decision), calibrated Noul undecided band ($0.35\dots0.65$), cooperative Swift 6 task cancellation. |
+| [**TraitSamples/01-OfflineLayaApp**](TraitSamples/01-OfflineLayaApp/README.md) | Standalone Package | `LayaOnDevice` | ❌ No API key | Pure on-device classification via Apple Neural Engine (`traits: ["Laya"]`). Zero network code linked. |
+| [**TraitSamples/02-CloudJevWorker**](TraitSamples/02-CloudJevWorker/README.md) | Standalone Package | `JevFoundationModels` | ✅ Yes (`TYPESAFE_API_KEY`) | Ultra-lean ticket triage worker (`traits: ["Jev"]`). Sub-second build, zero ML linkage. Fails fast if API key is missing. |
+| [**TraitSamples/03-PrivateLayaServer**](TraitSamples/03-PrivateLayaServer/README.md) | Standalone Package | `LayaFoundationModels` | `laya-serve` daemon | Internal VPC cluster scoring (`traits: ["LayaServe"]`). Custom DNS, TLS, and bearer auth. Requires reachable `laya-serve`. |
+| [**TraitSamples/04-HybridRouter**](TraitSamples/04-HybridRouter/README.md) | Standalone Package | Hybrid (`All`) | ✅ Yes (`TYPESAFE_API_KEY` + Core ML model) | Local-first edge execution with dynamic escalation (`traits: ["All"]`). Escalates to cloud Jev if confidence < 0.80. |
+| [**TraitSamples/05-SecureAppCheckApp**](TraitSamples/05-SecureAppCheckApp/README.md) | SwiftUI Mini-App + Cloud Function | `ProxyTransport` (`Jev`) | Firebase Emulator or Cloud Function | Zero-secret hardware attestation using Firebase App Check (Apple App Attest) and `ProxyTransport`. Requires running Firebase emulator or live gateway. |
 
 ---
 
@@ -116,3 +123,31 @@ swift run duplicate-article-demo
 ```
 
 For complete documentation, see [Examples/DuplicateArticleDemo/README.md](DuplicateArticleDemo/README.md).
+
+---
+
+### 6. Trait Samples (`Examples/TraitSamples/`)
+
+Five standalone SPM packages demonstrating fine-grained package traits and modularity:
+
+```bash
+# 1. 100% Offline ANE Classification (traits: ["Laya"])
+cd Examples/TraitSamples/01-OfflineLayaApp && swift run
+
+# 2. Cloud-Only Lean Decision Worker (traits: ["Jev"])
+export TYPESAFE_API_KEY="your-api-key"
+cd Examples/TraitSamples/02-CloudJevWorker && swift run
+
+# 3. Private VPC Server Scoring (traits: ["LayaServe"])
+# Ensure laya-serve daemon is running (default: http://127.0.0.1:8000/v1/systemone)
+cd Examples/TraitSamples/03-PrivateLayaServer && swift run
+
+# 4. Local-First Hybrid Confidence Router (traits: ["All"])
+export TYPESAFE_API_KEY="your-api-key"
+export LAYA_MODEL_PATH="/path/to/LayaDecisionModel.mlmodelc"
+cd Examples/TraitSamples/04-HybridRouter && swift run
+
+# 5. Zero-Secret Hardware-Attested App Check App (ProxyTransport)
+# Start emulator first: cd Examples/TraitSamples/05-SecureAppCheckApp/backend && firebase emulators:start --only functions
+cd Examples/TraitSamples/05-SecureAppCheckApp && swift run SecureAppCheckApp --cli
+```
