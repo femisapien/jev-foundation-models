@@ -7,9 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.2.0] - 2026-09-26
+## [0.2.0] - 2026-09-30
 
 ### Added
+
+- **Repository and Package Rename (`SystemOneFoundationModels`)**:
+  - Renamed the repository from `jev-foundation-models` to `system-one-foundation-models` and the core SPM package and umbrella library product to `SystemOneFoundationModels`.
+  - Reflects multi-model decision support across **Laya on-device Core ML** (Apple Neural Engine), **Laya self-hosted HTTP** (`laya-serve`), and hosted **TypeSafe Jev** cloud endpoints.
+  - Modularized targets into focused libraries: `SystemOneCore`, `LayaOnDevice`, `LayaFoundationModels`, `JevFoundationModels`, and the umbrella `SystemOneFoundationModels`.
+  - Updated all package dependency manifests, documentation, and Swift Package Index links.
+
+- **`NutritionLabelScanner` Reference iOS Application (`Examples/NutritionLabelScannerApp/`)**:
+  - Added native iOS reference application showcasing real-time camera scanning and multi-backend decision modeling for nutrition safety.
+  - Implemented live Vision OCR text recognition with spatial 2D row-clustering tolerance (`NutritionLabelParser`) to accurately reconstruct horizontal lines across multi-column tables.
+  - Supports multilingual label parsing for European / DACH (`Nährwertdeklaration`, `Brennwert`, `Zutaten`), French, and FDA / US (`Nutrition Facts`, `Serving Size`, `Ingredients`) standards.
+  - Strongly-typed dietary safety evaluation via `@Generable` `DietarySafetyDecision` and `DietaryFlag` models, computing allergen risk (0–3) and NOVA food processing classification (0–3).
+  - Configurable dietary restriction profiles (vegan, gluten-free, lactose-free, seed-oil-free, low sodium, sugar limits).
+  - Features OpenFoodFacts barcode fallback resolution, dynamic bounding box viewfinder overlays, and accessible haptic/audio feedback.
 
 - **Ergonomic Decision Shortcuts on `LanguageModelSession` (`SystemOneCore/Ergonomics`)**:
   - Implemented high-level ergonomic extensions on Apple's `LanguageModelSession` enabling ad-hoc queries without declaring boilerplate `@Generable` schema types:
@@ -51,9 +65,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `04-HybridRouter`: Local-first edge execution escalating to cloud Jev when confidence falls below 0.80 (`traits: ["All"]`).
   - `05-SecureAppCheckApp`: SwiftUI and CLI application utilizing `ProxyTransport` with hardware-backed Firebase App Check (Apple App Attest). Includes production Cloud Function reference, automated deployment wizard `setup-firebase-project.sh`, and `SETUP-PRODUCTION.md`.
 
-- **Technical Notes**:
-  - **Tech Note 0009** (`tech-notes/0009-package-traits-and-ergonomic-shortcuts.md`): Architectural analysis of Mattt's `AnyDecisionModel`, dynamic schema generation, and package trait partitioning along model boundaries.
-  - **Tech Note 0010** (`tech-notes/0010-proxy-transport-and-dynamic-attestation.md`): Zero-dependency reverse proxy transport architecture, dynamic credential resolution, consumable token retry semantics, and hardware attestation.
+- **Technical Notes Expansion (0003 through 0011)**:
+  - Documented deep SDK findings, architectural designs, and platform nuances in `tech-notes/`:
+    - **Tech Note 0003** (`tech-notes/0003-foundationmodels-dynamic-profiles.md`): Declarative dynamic profiles and session adaptation in Apple Foundation Models (`LanguageModelSession.DynamicProfile`, `DynamicProfileBuilder`, `@SessionPropertyEntry`, turn isolation).
+    - **Tech Note 0004** (`tech-notes/0004-secure-mobile-transport-appcheck.md`): Production mobile architecture securing TypeSafe credentials using Apple App Attest / DeviceCheck hardware attestation, Firebase Cloud Functions proxy, and `JevTransport`.
+    - **Tech Note 0005** (`tech-notes/0005-spm-dependency-isolation-and-vendor-transports.md`): SPM dependency isolation and decoupling vendor-specific transports from core targets to prevent dependency creep.
+    - **Tech Note 0006** (`tech-notes/0006-http-resilience-and-confidence-routing.md`): HTTP resilience, RFC 9110 `Retry-After` parsing, exponential backoff, cooperative cancellation safety, and calibrated confidence routing for the undecided band (`0.35...0.65`).
+    - **Tech Note 0007** (`tech-notes/0007-pluggable-system-one-backends-and-laya-serve.md`): Pluggable `SystemOneBackend` protocol architecture, wire protocol parity between TypeSafe Jev `/v1/systemone` and self-hosted `laya-serve`, and dynamic header injection.
+    - **Tech Note 0008** (`tech-notes/0008-on-device-coreml-decision-engine.md`): On-device decision models via Core ML and Apple Neural Engine (ANE), ModernBERT/mmBERT compilation, option marker gathering, 8-bit quantization, and zero-dependency Swift tokenization.
+    - **Tech Note 0009** (`tech-notes/0009-package-traits-and-ergonomic-shortcuts.md`): Architectural analysis of `AnyDecisionModel`, runtime dynamic schema synthesis (`DynamicDecisionSchema`), ergonomic shortcuts (`.probability()`, `.choice()`, `.score()`), `Choosable` protocol, and model-bounded package traits.
+    - **Tech Note 0010** (`tech-notes/0010-proxy-transport-and-dynamic-attestation.md`): Zero-dependency reverse proxy transport architecture, dynamic `Credential` enum (`.bearer`, `.header`, `.custom`), per-attempt token acquisition inside retry loops, and secret-free mobile binaries.
+    - **Tech Note 0011** (`tech-notes/0011-xcode-27-2-json-xcproj-format.md`): Adoption of Xcode 27.2+ native JSON project format (`project.xcproj`) replacing legacy OpenStep `.pbxproj` for human and AI agent ergonomics.
 
 ### Fixed
 
@@ -61,3 +83,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Eliminated legacy macOS keychain queries (`SecItemCopyMatching` / `SecItemAdd` without `kSecUseDataProtectionKeychain`).
   - Prevents system password authorization dialogs when running un-entitled environments (CLI runners, test runners, Xcode previews, un-provisioned dev builds).
   - Adopted shared in-memory fallback store with thread-safe access and reset facilities for clean, isolated test runs.
+
+---
+
+## [0.1.0] - 2026-09-21
+
+### Added
+
+- Initial release of the native Apple Foundation Models bridge for TypeSafe Jev.
+- Direct integration with `LanguageModel`, `LanguageModelExecutor`, and `@Generable`.
+- Decision primitive mapping for boolean statements (`noul`), categorical enums (`choice`), and ordinal rubrics (`score`).
+- CLI demonstration tools: `ticket-triage-demo`, `duplicate-article-demo`, and `file-organizer-demo`.
+- Technical notes 0001 (`tech-notes/0001-afm-decision-model-bridging.md`) and 0002 (`tech-notes/0002-foundationmodels-generation-quirks.md`).
+
+[0.2.0]: https://github.com/peterfriese/system-one-foundation-models/compare/0.1.0...0.2.0
+[0.1.0]: https://github.com/peterfriese/system-one-foundation-models/releases/tag/0.1.0
