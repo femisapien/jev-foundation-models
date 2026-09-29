@@ -72,7 +72,7 @@ The package is split into focused, modular targets so you only link the code and
 ### In `Package.swift`
 ```swift
 dependencies: [
-    .package(url: "https://github.com/peterfriese/jev-foundation-models.git", from: "0.2.0")
+    .package(url: "https://github.com/peterfriese/system-one-foundation-models.git", from: "0.2.0")
 ]
 ```
 
@@ -81,10 +81,10 @@ Add the target corresponding to your chosen path:
 .target(
     name: "MyApp",
     dependencies: [
-        .product(name: "LayaOnDevice", package: "jev-foundation-models") // Path A
-        // or .product(name: "LayaFoundationModels", package: "jev-foundation-models") // Path B
-        // or .product(name: "JevFoundationModels", package: "jev-foundation-models") // Path C
-        // or .product(name: "SystemOneFoundationModels", package: "jev-foundation-models") // All
+        .product(name: "LayaOnDevice", package: "SystemOneFoundationModels") // Path A
+        // or .product(name: "LayaFoundationModels", package: "SystemOneFoundationModels") // Path B
+        // or .product(name: "JevFoundationModels", package: "SystemOneFoundationModels") // Path C
+        // or .product(name: "SystemOneFoundationModels", package: "SystemOneFoundationModels") // All
     ]
 )
 ```
@@ -92,7 +92,7 @@ Add the target corresponding to your chosen path:
 ### In Xcode GUI
 1. Open your project in Xcode.
 2. Select **File > Add Package Dependencies...**
-3. Enter `https://github.com/peterfriese/jev-foundation-models.git`.
+3. Enter `https://github.com/peterfriese/system-one-foundation-models.git`.
 4. Choose version `0.2.0` or later and select your desired library target.
 
 ---

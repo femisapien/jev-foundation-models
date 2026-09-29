@@ -4,8 +4,8 @@
 [![Xcode 27](https://img.shields.io/badge/Xcode-27.0+-blue.svg?style=flat&logo=xcode)](https://developer.apple.com/xcode/)
 [![iOS 27.0+](https://img.shields.io/badge/iOS-27.0+-black.svg?style=flat&logo=apple)](https://developer.apple.com/ios/)
 [![macOS 27.0+](https://img.shields.io/badge/macOS-27.0+-black.svg?style=flat&logo=apple)](https://developer.apple.com/macos/)
-[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fpeterfriese%2Fjev-foundation-models%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/peterfriese/jev-foundation-models)
-[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fpeterfriese%2Fjev-foundation-models%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/peterfriese/jev-foundation-models)
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fpeterfriese%2Fsystem-one-foundation-models%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/peterfriese/system-one-foundation-models)
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fpeterfriese%2Fsystem-one-foundation-models%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/peterfriese/system-one-foundation-models)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 A lightweight, native Swift 6 bridge integrating **System One decision models** into Apple's **Foundation Models** framework (`LanguageModel`, `LanguageModelExecutor`, `@Generable`).
@@ -50,7 +50,7 @@ Add `SystemOneFoundationModels` to your `Package.swift` or via Xcode (**File > A
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/peterfriese/jev-foundation-models.git", from: "0.2.0")
+    .package(url: "https://github.com/peterfriese/system-one-foundation-models.git", from: "0.2.0")
 ]
 ```
 
@@ -60,16 +60,16 @@ Using Swift 6.1 Package Traits ([SE-0402](https://github.com/swiftlang/swift-evo
 
 ```swift
 // Default (TypeSafe Jev hosted cloud API):
-.package(url: "https://github.com/peterfriese/jev-foundation-models.git", from: "0.2.0")
+.package(url: "https://github.com/peterfriese/system-one-foundation-models.git", from: "0.2.0")
 
 // On-Device only (Core ML + Apple Neural Engine, zero network/cloud code):
-.package(url: "https://github.com/peterfriese/jev-foundation-models.git", from: "0.2.0", traits: ["OnDevice"])
+.package(url: "https://github.com/peterfriese/system-one-foundation-models.git", from: "0.2.0", traits: ["OnDevice"])
 
 // Remote only (Jev cloud + self-hosted laya-serve HTTP, no Core ML binaries):
-.package(url: "https://github.com/peterfriese/jev-foundation-models.git", from: "0.2.0", traits: ["Remote"])
+.package(url: "https://github.com/peterfriese/system-one-foundation-models.git", from: "0.2.0", traits: ["Remote"])
 
 // All backends (Core ML, Laya HTTP, and Jev cloud):
-.package(url: "https://github.com/peterfriese/jev-foundation-models.git", from: "0.2.0", traits: ["All"])
+.package(url: "https://github.com/peterfriese/system-one-foundation-models.git", from: "0.2.0", traits: ["All"])
 ```
 
 | Trait | Type | Description |

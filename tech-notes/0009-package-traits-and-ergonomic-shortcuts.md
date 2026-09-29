@@ -245,7 +245,7 @@ Cutting along model boundaries allows consumers to strictly control their binary
 To prevent trait fatigue, the package provides high-level persona traits (`OnDevice`, `Remote`, `All`) that compose underlying model traits. A consumer configuring their dependency can write:
 
 ```swift
-.package(url: "https://github.com/peterfriese/jev-foundation-models.git", from: "0.2.0", traits: ["OnDevice"])
+.package(url: "https://github.com/peterfriese/system-one-foundation-models.git", from: "0.2.0", traits: ["OnDevice"])
 ```
 
 This delivers an intuitive, self-documenting declaration that aligns directly with the app's architectural requirements.
