@@ -15,14 +15,16 @@ Welcome to the comprehensive documentation for **System One for Apple Foundation
 * [**Architecture Decision Record (ADR)**](architecture/ADR-2026-09-25-mail-triage-system-one-engine.md): Architectural decisions, multi-backend System One execution, and confidence routing.
 * [**Product Requirements Document (PRD)**](prd/PRD-2026-09-25-mail-triage-system-one-engine.md): Product requirements and UX specifications for the MailTriage reference application.
 * [**Type Mapping Guide**](mapping-guide.md): Comprehensive reference mapping `@Generable` Swift types (`Bool`, `enum`, ranges) to System One primitives (`noul`, `choice`, `score`).
+* [**Mobile Application Blueprints**](example-app-ideas.md): Production-ready mobile application blueprints demonstrating sub-100ms decision capabilities across iOS, watchOS, and visionOS.
 * [**Contributing Guide**](../CONTRIBUTING.md): Setup, offline testing protocol, coding standards, and Tech Note curation for contributors.
 
 ---
 
 ## 📱 Sample Applications & Reference Demos
 
-* [**Examples Catalog (`Examples/README.md`)**](../Examples/README.md): Comprehensive comparison and run instructions for all 5 reference applications and CLI tools.
+* [**Examples Catalog (`Examples/README.md`)**](../Examples/README.md): Comprehensive comparison and run instructions for all reference applications and CLI tools.
 * [**MailTriageApp (`Examples/MailTriageApp/`)**](../Examples/MailTriageApp/README.md): **Flagship Reference App** for macOS and iOS. Features 3-pane split view, 5 selectable execution backends (Core ML, Local Laya, Remote Laya, Jev Cloud, Mock), urgency priority tokens, batch triage with cancellation, and pre-seeded reference truth benchmarks.
+* [**Nutrition Label Scanner (`Examples/NutritionLabelScannerApp/`)**](../Examples/NutritionLabelScannerApp/): Camera-first iOS application evaluating dietary safety and allergens against live OCR packaging and Open Food Facts with Apple Liquid Glass design.
 * [**Local Laya Demo (`Examples/LayaDemo/`)**](../Examples/LayaDemo/README.md): Zero-key CLI tool connecting to local or remote `laya-serve` instances via `POST /v1/systemone`.
 * [**Ticket Triage Demo (`Examples/TicketTriageDemo/`)**](../Examples/TicketTriageDemo/README.md): Customer inquiry routing with `RetryPolicy` resilience, multi-primitive `@Generable` schema, and confidence-gated operations.
 * [**Duplicate Article Detection (`Examples/DuplicateArticleDemo/`)**](../Examples/DuplicateArticleDemo/README.md): Two-layer deduplication engine using deterministic checks, System One semantic evaluation, and cooperative cancellation.
